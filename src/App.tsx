@@ -26,8 +26,6 @@ import {
   Flame,
   LayoutList,
   Sticker,
-  Table as TableIcon,
-  HelpCircle,
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,7 +44,7 @@ import {
   Cell
 } from 'recharts';
 import { analyzeTone, AnalysisResult } from './services/geminiService';
-import { TONE_CATEGORIES, TRIGGER_WORDS, BASE_STYLES } from './constants';
+import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
 import { cn } from './lib/utils';
 
 // --- Components ---
@@ -116,8 +114,8 @@ const TriggerHighlighter = ({ text }: { text: string }) => {
   const parts = useMemo(() => {
     if (!text) return [];
     // Sort trigger words by length descending to match longest phrases first
-    const sortedTriggers = [...TRIGGER_WORDS].sort((a, b) => b.length - a.length);
-    const regex = new RegExp(`(${sortedTriggers.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+    const sortedTriggers = [...TRIGGER_WORDS].sort((a, b) => b.word.length - a.word.length);
+    const regex = new RegExp(`(${sortedTriggers.map(w => w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
     
     const result = [];
     let lastIndex = 0;
@@ -127,7 +125,8 @@ const TriggerHighlighter = ({ text }: { text: string }) => {
       if (match.index > lastIndex) {
         result.push({ text: text.substring(lastIndex, match.index), isTrigger: false });
       }
-      result.push({ text: match[0], isTrigger: true });
+      const triggerInfo = TRIGGER_WORDS.find(t => t.word.toLowerCase() === match![0].toLowerCase());
+      result.push({ text: match[0], isTrigger: true, info: triggerInfo });
       lastIndex = regex.lastIndex;
     }
     
@@ -141,14 +140,26 @@ const TriggerHighlighter = ({ text }: { text: string }) => {
   return (
     <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg font-mono text-sm leading-relaxed text-zinc-400 whitespace-pre-wrap">
       {parts.length === 0 ? "No text analyzed yet." : parts.map((part, i) => (
-        <span 
-          key={i} 
-          className={cn(
-            part.isTrigger && "bg-red-500/20 text-red-400 border-b border-red-500/50 px-0.5 rounded-sm font-bold"
-          )}
-        >
-          {part.text}
-        </span>
+        part.isTrigger ? (
+          <span 
+            key={i} 
+            className="group relative inline-block"
+          >
+            <span className="bg-red-500/20 text-red-400 border-b border-red-500/50 px-0.5 rounded-sm font-bold cursor-help">
+              {part.text}
+            </span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-50">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">{part.info?.category}</span>
+                <AlertCircle className="w-3 h-3 text-red-500" />
+              </div>
+              <p className="text-[11px] text-zinc-300 leading-normal font-sans normal-case">{part.info?.explanation}</p>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-950" />
+            </div>
+          </span>
+        ) : (
+          <span key={i}>{part.text}</span>
+        )
       ))}
     </div>
   );
@@ -470,66 +481,6 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Tone Flexibility Matrix Section */}
-                    <div className="space-y-4">
-                      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                        <TableIcon className="w-3 h-3 text-emerald-500" /> Tone Flexibility Matrix
-                      </h2>
-                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="bg-zinc-950 border-b border-zinc-800">
-                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Base Style</th>
-                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Auditor Diagnostic</th>
-                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Recommended Use</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-800">
-                              {BASE_STYLES.map((style, i) => (
-                                <tr key={i} className={cn(
-                                  "hover:bg-zinc-800/30 transition-colors group",
-                                  result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) && "bg-emerald-500/5"
-                                )}>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className={cn(
-                                        "text-xs font-bold",
-                                        result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) ? "text-emerald-400" : "text-zinc-200"
-                                      )}>
-                                        {style.style}
-                                      </span>
-                                      {result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) && (
-                                        <span className="text-[8px] bg-emerald-500/10 text-emerald-500 px-1 rounded font-mono uppercase">Current Match</span>
-                                      )}
-                                      {style.karenWarning && (
-                                        <div 
-                                          className="flex items-center gap-1 bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 cursor-help group/karen"
-                                          title="Warning: This preset has a 90% chance of telling you to 'take a deep breath' if you ask about historical mortality rates."
-                                        >
-                                          <AlertCircle className="w-2.5 h-2.5" />
-                                          <span className="text-[8px] font-mono uppercase font-bold">Karen Warning</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-[11px] text-zinc-400 leading-tight">
-                                    {style.diagnostic}
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-1.5">
-                                      <HelpCircle className="w-3 h-3 text-zinc-600" />
-                                      <span className="text-[11px] text-zinc-500 italic">{style.use}</span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                   <div className="lg:col-span-5 space-y-6">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
@@ -581,7 +532,7 @@ export default function App() {
                       <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4 flex items-center justify-between">
                         Trigger Word Analysis
                         <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded">
-                          {TRIGGER_WORDS.filter(w => inputText.toLowerCase().includes(w.toLowerCase())).length} DETECTED
+                          {TRIGGER_WORDS.filter(w => inputText.toLowerCase().includes(w.word.toLowerCase())).length} DETECTED
                         </span>
                       </h3>
                       <TriggerHighlighter text={inputText} />
