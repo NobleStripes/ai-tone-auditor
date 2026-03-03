@@ -21,6 +21,7 @@ import {
   Cpu,
   Lightbulb,
   Copy,
+  Check,
   Settings2,
   Smile,
   Flame,
@@ -175,6 +176,56 @@ const TriggerHighlighter = ({ text }: { text: string }) => {
           <span key={i}>{part.text}</span>
         )
       ))}
+    </div>
+  );
+};
+
+const RecommendationCard = ({ tip, index }: { tip: any, index: number }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(tip.promptSnippet);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3 hover:border-amber-500/30 transition-colors group">
+      <h4 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+        <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-[10px] font-mono">
+          {index + 1}
+        </span>
+        {tip.title}
+      </h4>
+      <p className="text-xs text-zinc-500 leading-relaxed">
+        {tip.description}
+      </p>
+      {tip.promptSnippet && (
+        <div className="relative mt-2">
+          <div className="bg-zinc-950 border border-zinc-800 rounded p-3 font-mono text-[10px] text-amber-500/80 break-all">
+            {tip.promptSnippet}
+          </div>
+          <button 
+            onClick={handleCopy}
+            className={cn(
+              "absolute top-2 right-2 p-1.5 border rounded transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5",
+              copied 
+                ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500" 
+                : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+            )}
+            title="Copy Instruction"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span className="text-[8px] font-mono uppercase tracking-tighter">Copied</span>
+              </>
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -449,33 +500,7 @@ export default function App() {
                       </h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {result.recommendations.map((tip, i) => (
-                          <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3 hover:border-amber-500/30 transition-colors group">
-                            <h4 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-[10px] font-mono">
-                                {i + 1}
-                              </span>
-                              {tip.title}
-                            </h4>
-                            <p className="text-xs text-zinc-500 leading-relaxed">
-                              {tip.description}
-                            </p>
-                            {tip.promptSnippet && (
-                              <div className="relative mt-2">
-                                <div className="bg-zinc-950 border border-zinc-800 rounded p-3 font-mono text-[10px] text-amber-500/80 break-all">
-                                  {tip.promptSnippet}
-                                </div>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(tip.promptSnippet!);
-                                  }}
-                                  className="absolute top-2 right-2 p-1.5 bg-zinc-900 border border-zinc-800 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-all opacity-0 group-hover:opacity-100"
-                                  title="Copy Instruction"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <RecommendationCard key={i} tip={tip} index={i} />
                         ))}
                       </div>
                     </div>

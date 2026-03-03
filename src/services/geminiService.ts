@@ -17,7 +17,7 @@ export interface AnalysisResult {
   recommendations: {
     title: string;
     description: string;
-    promptSnippet?: string;
+    promptSnippet: string;
   }[];
   personalization: {
     baseStyle: string;
@@ -55,7 +55,7 @@ export async function analyzeTone(text: string): Promise<AnalysisResult> {
     - Dismissive Language: Brushing off user concerns as insignificant.
 
     In addition to the analysis, provide:
-    1. 2-3 "AI Personality Tuning Tips" (text instructions).
+    1. 2-3 "AI Personality Tuning Tips" (text instructions). For each tip, include a "promptSnippet" which is a specific, copy-pasteable instruction the user can add to their system prompt or custom instructions to implement the fix.
     2. A "Personalization Profile" based on the ChatGPT 5.2 personalization settings.
     3. "Why This Response?": For each finding, explain the hidden RLHF (Reinforcement Learning from Human Feedback) safety-alignment logic that likely triggered this specific phrasing.
     4. "Contextual Heatmap": Evaluate the density of the input text. If it's short or vague, explain how this "low context" forces the AI to "guess" at safety, leading to preachy refusals. Provide a heatmap breakdown of the text.
@@ -106,7 +106,7 @@ export async function analyzeTone(text: string): Promise<AnalysisResult> {
                 description: { type: Type.STRING },
                 promptSnippet: { type: Type.STRING },
               },
-              required: ['title', 'description'],
+              required: ['title', 'description', 'promptSnippet'],
             }
           },
           personalization: {
