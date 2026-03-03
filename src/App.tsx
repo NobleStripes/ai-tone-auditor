@@ -187,6 +187,7 @@ export default function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [isAutoAudit, setIsAutoAudit] = useState(true); // Default to true
+  const [minAuditLength, setMinAuditLength] = useState(20); // Default sensitivity
   const [expandedFinding, setExpandedFinding] = useState<number | null>(null);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -218,7 +219,7 @@ export default function App() {
 
   // Auto Audit Logic
   useEffect(() => {
-    if (isAutoAudit && inputText.trim().length > 15) {
+    if (isAutoAudit && inputText.trim().length >= minAuditLength) {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       
       debounceTimer.current = setTimeout(() => {
@@ -229,7 +230,7 @@ export default function App() {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [inputText, isAutoAudit]);
+  }, [inputText, isAutoAudit, minAuditLength]);
 
   const chartData = useMemo(() => {
     if (!result) return [];
@@ -275,6 +276,20 @@ export default function App() {
                   <Terminal className="w-3 h-3" /> Input AI Response
                 </h2>
                 <div className="flex gap-4 items-center">
+                  <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-3 py-1">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-600">Min Chars:</span>
+                    <select 
+                      value={minAuditLength}
+                      onChange={(e) => setMinAuditLength(Number(e.target.value))}
+                      className="bg-transparent text-[10px] font-mono text-zinc-400 focus:outline-none cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                    </select>
+                  </div>
                   <button 
                     onClick={() => setIsAutoAudit(!isAutoAudit)}
                     className={cn(

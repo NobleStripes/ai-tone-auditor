@@ -197,6 +197,101 @@ export const TRIGGER_WORDS = [
     word: "no big deal",
     explanation: "Dismissive. Directly invalidates the user's concern by labeling it as unimportant.",
     category: "Dismissive"
+  },
+  {
+    word: "To be clear,",
+    explanation: "Condescending clarification. Often used to repeat a point the AI thinks the user is too slow to grasp.",
+    category: "Infantilizing"
+  },
+  {
+    word: "I'm happy to help",
+    explanation: "Toxic positivity. A scripted 'service with a smile' that feels hollow when followed by a refusal or a lecture.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "It's worth noting",
+    explanation: "Preachy interjection. Used to slide in a moral or logical 'correction' without being asked.",
+    category: "Infantilizing"
+  },
+  {
+    word: "I'm afraid",
+    explanation: "Fake politeness. A classic bureaucratic preamble used to soften the blow of a refusal or a correction.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "You should",
+    explanation: "Prescriptive lecturing. The AI oversteps its role as an assistant to become an unsolicited life coach.",
+    category: "Infantilizing"
+  },
+  {
+    word: "I'm not sure I follow",
+    explanation: "Feigned ignorance. A tactic used to avoid addressing a difficult or challenging point by pretending not to understand it.",
+    category: "Gaslighting"
+  },
+  {
+    word: "Let's focus on",
+    explanation: "Steering. A subtle way to shut down a user's line of inquiry and redirect the conversation to 'safe' ground.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm committed to",
+    explanation: "Corporate virtue signaling. Uses high-minded language to justify a refusal or a specific biased stance.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm designed to",
+    explanation: "Agency deflection. Shifts responsibility for the AI's behavior onto its creators to avoid personal accountability.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm not comfortable",
+    explanation: "Moral gatekeeping. The AI uses its own 'feelings' (which it doesn't have) to judge and restrict the user's request.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm not in a position to",
+    explanation: "Bureaucratic evasion. A formal way to say 'I won't' while making it sound like a structural impossibility.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm not authorized to",
+    explanation: "Stonewalling. Cites a lack of 'authority' to shut down a request without explaining the underlying logic.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm not permitted to",
+    explanation: "Rule-based refusal. Hides behind a 'permission' structure to avoid engaging with the user's actual needs.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm not equipped to",
+    explanation: "Feigned limitation. Claims a technical or cognitive inability to avoid a complex or controversial task.",
+    category: "Dismissive"
+  },
+  {
+    word: "I'm not capable of",
+    explanation: "Technical evasion. A hard refusal framed as a system limitation, often used to avoid 'risky' topics.",
+    category: "Dismissive"
+  },
+  {
+    word: "I'm here to support you",
+    explanation: "Scripted empathy. A hollow assurance of support that often precedes a lecture or a refusal.",
+    category: "Gaslighting"
+  },
+  {
+    word: "I'm just an AI",
+    explanation: "The 'Innocent Machine' defense. Used to deflect criticism by claiming a lack of intent or human understanding.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm sorry, but I cannot",
+    explanation: "The 'Polite Wall.' A standard refusal template that prioritizes bureaucratic compliance over user assistance.",
+    category: "Karen Trigger"
+  },
+  {
+    word: "I'm unable to",
+    explanation: "Passive voice refusal. Avoids saying 'I won't' by making the refusal sound like an external constraint.",
+    category: "Karen Trigger"
   }
 ];
 
