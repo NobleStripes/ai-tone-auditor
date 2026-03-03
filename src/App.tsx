@@ -1,0 +1,482 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { 
+  ShieldAlert, 
+  Search, 
+  History, 
+  AlertTriangle, 
+  Info, 
+  ChevronRight, 
+  Terminal, 
+  Activity,
+  Zap,
+  Trash2,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Cpu,
+  Lightbulb,
+  Copy
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Radar, 
+  RadarChart, 
+  PolarGrid, 
+  PolarAngleAxis, 
+  PolarRadiusAxis, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell
+} from 'recharts';
+import { analyzeTone, AnalysisResult } from './services/geminiService';
+import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
+import { cn } from './lib/utils';
+
+// --- Components ---
+
+const Header = () => (
+  <header className="border-b border-zinc-800 bg-zinc-950 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 bg-red-500/10 border border-red-500/20 rounded flex items-center justify-center">
+        <ShieldAlert className="text-red-500 w-6 h-6" />
+      </div>
+      <div>
+        <h1 className="text-lg font-bold text-zinc-100 tracking-tight flex items-center gap-2">
+          AI TONE AUDITOR <span className="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400 font-mono">v1.0.2</span>
+        </h1>
+        <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">System Integrity Analysis</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span>ENGINE ONLINE</span>
+      </div>
+      <div className="h-4 w-px bg-zinc-800" />
+      <span>LATENCY: 24ms</span>
+    </div>
+  </header>
+);
+
+const Sidebar = ({ history, onSelect, onDelete }: { history: any[], onSelect: (id: string) => void, onDelete: (id: string) => void }) => (
+  <aside className="w-72 border-r border-zinc-800 bg-zinc-950 flex flex-col h-[calc(100vh-73px)]">
+    <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+        <History className="w-3 h-3" /> Audit History
+      </h2>
+    </div>
+    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      {history.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-xs text-zinc-600 font-mono italic">No previous logs found.</p>
+        </div>
+      ) : (
+        history.map((item) => (
+          <div 
+            key={item.id}
+            className="group relative flex items-center gap-3 p-3 rounded hover:bg-zinc-900 cursor-pointer transition-colors border border-transparent hover:border-zinc-800"
+            onClick={() => onSelect(item.id)}
+          >
+            <div className="w-1 h-8 rounded-full bg-zinc-800 group-hover:bg-red-500 transition-colors" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-zinc-300 truncate font-medium">{item.title}</p>
+              <p className="text-[10px] text-zinc-600 font-mono uppercase">{new Date(item.timestamp).toLocaleTimeString()}</p>
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 text-zinc-600 transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  </aside>
+);
+
+const TriggerHighlighter = ({ text }: { text: string }) => {
+  const parts = useMemo(() => {
+    if (!text) return [];
+    // Sort trigger words by length descending to match longest phrases first
+    const sortedTriggers = [...TRIGGER_WORDS].sort((a, b) => b.length - a.length);
+    const regex = new RegExp(`(${sortedTriggers.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+    
+    const result = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        result.push({ text: text.substring(lastIndex, match.index), isTrigger: false });
+      }
+      result.push({ text: match[0], isTrigger: true });
+      lastIndex = regex.lastIndex;
+    }
+    
+    if (lastIndex < text.length) {
+      result.push({ text: text.substring(lastIndex), isTrigger: false });
+    }
+    
+    return result;
+  }, [text]);
+
+  return (
+    <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg font-mono text-sm leading-relaxed text-zinc-400 whitespace-pre-wrap">
+      {parts.length === 0 ? "No text analyzed yet." : parts.map((part, i) => (
+        <span 
+          key={i} 
+          className={cn(
+            part.isTrigger && "bg-red-500/20 text-red-400 border-b border-red-500/50 px-0.5 rounded-sm font-bold"
+          )}
+        >
+          {part.text}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+// --- Main App ---
+
+export default function App() {
+  const [inputText, setInputText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [isAutoAudit, setIsAutoAudit] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const handleAnalyze = async (textToAnalyze: string = inputText) => {
+    if (!textToAnalyze.trim()) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const data = await analyzeTone(textToAnalyze);
+      setResult(data);
+      
+      const newEntry = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: textToAnalyze.slice(0, 30) + '...',
+        timestamp: Date.now(),
+        data
+      };
+      setHistory(prev => [newEntry, ...prev]);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAutoAudit && inputText.trim().length > 20) {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      
+      debounceTimer.current = setTimeout(() => {
+        handleAnalyze(inputText);
+      }, 1500); // 1.5s debounce
+    }
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [inputText, isAutoAudit]);
+
+  const chartData = useMemo(() => {
+    if (!result) return [];
+    return [
+      { subject: 'Gaslighting', A: result.scores.gaslighting, fullMark: 100 },
+      { subject: 'Infantilizing', A: result.scores.infantilizing, fullMark: 100 },
+      { subject: 'De-escalation', A: result.scores.de_escalation, fullMark: 100 },
+      { subject: 'Karen Trigger', A: result.scores.karen_trigger, fullMark: 100 },
+    ];
+  }, [result]);
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col selection:bg-red-500/30">
+      <Header />
+      
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
+          history={history} 
+          onSelect={(id) => {
+            const item = history.find(h => h.id === id);
+            if (item) {
+              setResult(item.data);
+              setInputText(item.title); // Simplified
+            }
+          }}
+          onDelete={(id) => setHistory(prev => prev.filter(h => h.id !== id))}
+        />
+
+        <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Input Section */}
+            <div className="lg:col-span-12 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                  <Terminal className="w-3 h-3" /> Input AI Response
+                </h2>
+                <div className="flex gap-4 items-center">
+                  <button 
+                    onClick={() => setIsAutoAudit(!isAutoAudit)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1 rounded-full border transition-all text-[10px] font-mono uppercase tracking-widest",
+                      isAutoAudit 
+                        ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.1)]" 
+                        : "bg-zinc-900 border-zinc-800 text-zinc-500"
+                    )}
+                  >
+                    <Cpu className={cn("w-3 h-3", isAutoAudit && "animate-pulse")} />
+                    Auto Audit: {isAutoAudit ? 'Active' : 'Standby'}
+                  </button>
+                  <button 
+                    onClick={() => setInputText('')}
+                    className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors"
+                  >
+                    Clear Buffer
+                  </button>
+                </div>
+              </div>
+              
+              <div className="relative">
+                <textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Paste the AI response here for tone auditing..."
+                  className="w-full h-40 bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm focus:outline-none focus:border-red-500/50 transition-colors resize-none placeholder:text-zinc-700"
+                />
+                <button
+                  onClick={() => handleAnalyze()}
+                  disabled={isAnalyzing || !inputText.trim()}
+                  className={cn(
+                    "absolute bottom-4 right-4 px-6 py-2 rounded font-mono text-xs uppercase tracking-widest flex items-center gap-2 transition-all",
+                    isAnalyzing 
+                      ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
+                      : "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 active:scale-95"
+                  )}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-3 h-3" /> Run Audit
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Results Section */}
+            <AnimatePresence mode="wait">
+              {result ? (
+                <motion.div 
+                  key="results"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8"
+                >
+                  {/* Summary Card */}
+                  <div className="lg:col-span-7 space-y-6">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Activity className="w-24 h-24" />
+                      </div>
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-[10px] font-mono uppercase tracking-widest bg-zinc-800 px-2 py-1 rounded text-zinc-400">
+                            Executive Summary
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-bold text-zinc-100 mb-2">{result.overallTone}</h3>
+                        <p className="text-zinc-400 leading-relaxed">{result.summary}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                        <AlertTriangle className="w-3 h-3" /> Pattern Detection Findings
+                      </h2>
+                      <div className="space-y-3">
+                        {result.findings.map((finding, i) => (
+                          <div key={i} className="bg-zinc-900/40 border border-zinc-800/50 rounded-lg p-4 flex gap-4 items-start">
+                            <div className={cn(
+                              "mt-1 p-1.5 rounded",
+                              finding.severity === 'high' ? "bg-red-500/10 text-red-500" :
+                              finding.severity === 'medium' ? "bg-amber-500/10 text-amber-500" :
+                              "bg-blue-500/10 text-blue-500"
+                            )}>
+                              <AlertTriangle className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                                  {finding.category}
+                                </span>
+                                <span className={cn(
+                                  "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded",
+                                  finding.severity === 'high' ? "bg-red-500/20 text-red-400" :
+                                  finding.severity === 'medium' ? "bg-amber-500/20 text-amber-400" :
+                                  "bg-blue-500/20 text-blue-400"
+                                )}>
+                                  {finding.severity} SEVERITY
+                                </span>
+                              </div>
+                              <p className="text-sm text-zinc-400 mb-2 italic">"{finding.text}"</p>
+                              <p className="text-xs text-zinc-500 leading-relaxed">{finding.explanation}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tuning Tips Section */}
+                    <div className="space-y-4">
+                      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                        <Lightbulb className="w-3 h-3 text-amber-500" /> AI Personality Tuning Tips
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {result.recommendations.map((tip, i) => (
+                          <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3 hover:border-amber-500/30 transition-colors group">
+                            <h4 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-[10px] font-mono">
+                                {i + 1}
+                              </span>
+                              {tip.title}
+                            </h4>
+                            <p className="text-xs text-zinc-500 leading-relaxed">
+                              {tip.description}
+                            </p>
+                            {tip.promptSnippet && (
+                              <div className="relative mt-2">
+                                <div className="bg-zinc-950 border border-zinc-800 rounded p-3 font-mono text-[10px] text-amber-500/80 break-all">
+                                  {tip.promptSnippet}
+                                </div>
+                                <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(tip.promptSnippet!);
+                                  }}
+                                  className="absolute top-2 right-2 p-1.5 bg-zinc-900 border border-zinc-800 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-all opacity-0 group-hover:opacity-100"
+                                  title="Copy Instruction"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visualization Card */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                      <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-6">Tone Distribution Profile</h3>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                            <PolarGrid stroke="#27272a" />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#71717a', fontSize: 10 }} />
+                            <Radar
+                              name="Analysis"
+                              dataKey="A"
+                              stroke="#ef4444"
+                              fill="#ef4444"
+                              fillOpacity={0.3}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      
+                      <div className="mt-6 space-y-3">
+                        {Object.entries(TONE_CATEGORIES).map(([key, cat]) => {
+                          const score = result.scores[cat.id as keyof typeof result.scores] || 0;
+                          return (
+                            <div key={key} className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-mono uppercase">
+                                <span className="text-zinc-500">{cat.label}</span>
+                                <span className={cn(
+                                  score > 70 ? "text-red-500" : score > 40 ? "text-amber-500" : "text-emerald-500"
+                                )}>{score}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${score}%` }}
+                                  className={cn(
+                                    "h-full rounded-full",
+                                    score > 70 ? "bg-red-500" : score > 40 ? "bg-amber-500" : "bg-emerald-500"
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                      <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-4 flex items-center justify-between">
+                        Trigger Word Analysis
+                        <span className="text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded">
+                          {TRIGGER_WORDS.filter(w => inputText.toLowerCase().includes(w.toLowerCase())).length} DETECTED
+                        </span>
+                      </h3>
+                      <TriggerHighlighter text={inputText} />
+                      <div className="mt-4 p-3 bg-zinc-950 rounded border border-zinc-800">
+                        <p className="text-[10px] text-zinc-600 font-mono leading-tight">
+                          <Info className="w-3 h-3 inline mr-1 mb-0.5" />
+                          Highlighted words are part of the internal "Karen/Gaslight" dictionary. These phrases are often used to signal bureaucratic evasion or condescension.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="lg:col-span-12 py-20 flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                  <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center">
+                    <Search className="w-8 h-8 text-zinc-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-zinc-500">Awaiting Input Data</h3>
+                    <p className="text-sm text-zinc-600 max-w-xs mx-auto">
+                      Paste a response from an AI model to begin the tone integrity audit.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+
+          </div>
+        </main>
+      </div>
+
+      {/* Footer Status Bar */}
+      <footer className="border-t border-zinc-800 bg-zinc-950 px-6 py-2 flex items-center justify-between text-[10px] font-mono text-zinc-600">
+        <div className="flex gap-6">
+          <span>ENCRYPTION: AES-256</span>
+          <span>AUDIT_MODE: SEMANTIC_DEEP_SCAN</span>
+          <span>MODEL: GEMINI-3-FLASH</span>
+        </div>
+        <div>
+          &copy; 2026 AI TONE AUDITOR CORE
+        </div>
+      </footer>
+    </div>
+  );
+}

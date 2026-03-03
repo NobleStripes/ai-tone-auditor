@@ -1,0 +1,5 @@
+{
+  "name": "AI Tone Auditor",
+  "description": "Analyze AI responses for gaslighting, infantilizing, and passive-aggressive patterns.",
+  "requestFramePermissions": []
+}
