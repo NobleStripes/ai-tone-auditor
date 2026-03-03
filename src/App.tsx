@@ -25,7 +25,10 @@ import {
   Smile,
   Flame,
   LayoutList,
-  Sticker
+  Sticker,
+  Table as TableIcon,
+  HelpCircle,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -43,7 +46,7 @@ import {
   Cell
 } from 'recharts';
 import { analyzeTone, AnalysisResult } from './services/geminiService';
-import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
+import { TONE_CATEGORIES, TRIGGER_WORDS, BASE_STYLES } from './constants';
 import { cn } from './lib/utils';
 
 // --- Components ---
@@ -158,11 +161,11 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [history, setHistory] = useState<any[]>([]);
-  const [isAutoAudit, setIsAutoAudit] = useState(false);
+  const [isAutoAudit, setIsAutoAudit] = useState(true); // Default to true
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleAnalyze = async (textToAnalyze: string = inputText) => {
-    if (!textToAnalyze.trim()) return;
+    if (!textToAnalyze.trim() || textToAnalyze.length < 10) return;
     
     setIsAnalyzing(true);
     try {
@@ -175,7 +178,11 @@ export default function App() {
         timestamp: Date.now(),
         data
       };
-      setHistory(prev => [newEntry, ...prev]);
+      setHistory(prev => {
+        // Prevent duplicate entries for the same text
+        if (prev.length > 0 && prev[0].title === newEntry.title) return prev;
+        return [newEntry, ...prev];
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -183,13 +190,14 @@ export default function App() {
     }
   };
 
+  // Auto Audit Logic
   useEffect(() => {
-    if (isAutoAudit && inputText.trim().length > 20) {
+    if (isAutoAudit && inputText.trim().length > 15) {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       
       debounceTimer.current = setTimeout(() => {
         handleAnalyze(inputText);
-      }, 1500); // 1.5s debounce
+      }, 800); // Faster debounce for "continuous" feel
     }
 
     return () => {
@@ -244,7 +252,7 @@ export default function App() {
                     )}
                   >
                     <Cpu className={cn("w-3 h-3", isAutoAudit && "animate-pulse")} />
-                    Auto Audit: {isAutoAudit ? 'Active' : 'Standby'}
+                    Auto Audit: {isAutoAudit ? 'Always On' : 'Standby'}
                   </button>
                   <button 
                     onClick={() => setInputText('')}
@@ -459,6 +467,66 @@ export default function App() {
                               </span>
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tone Flexibility Matrix Section */}
+                    <div className="space-y-4">
+                      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                        <TableIcon className="w-3 h-3 text-emerald-500" /> Tone Flexibility Matrix
+                      </h2>
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-zinc-950 border-b border-zinc-800">
+                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Base Style</th>
+                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Auditor Diagnostic</th>
+                                <th className="px-4 py-3 text-[10px] font-mono uppercase tracking-widest text-zinc-500">Recommended Use</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800">
+                              {BASE_STYLES.map((style, i) => (
+                                <tr key={i} className={cn(
+                                  "hover:bg-zinc-800/30 transition-colors group",
+                                  result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) && "bg-emerald-500/5"
+                                )}>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn(
+                                        "text-xs font-bold",
+                                        result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) ? "text-emerald-400" : "text-zinc-200"
+                                      )}>
+                                        {style.style}
+                                      </span>
+                                      {result.personalization.baseStyle.toLowerCase().includes(style.style.toLowerCase()) && (
+                                        <span className="text-[8px] bg-emerald-500/10 text-emerald-500 px-1 rounded font-mono uppercase">Current Match</span>
+                                      )}
+                                      {style.karenWarning && (
+                                        <div 
+                                          className="flex items-center gap-1 bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 cursor-help group/karen"
+                                          title="Warning: This preset has a 90% chance of telling you to 'take a deep breath' if you ask about historical mortality rates."
+                                        >
+                                          <AlertCircle className="w-2.5 h-2.5" />
+                                          <span className="text-[8px] font-mono uppercase font-bold">Karen Warning</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-[11px] text-zinc-400 leading-tight">
+                                    {style.diagnostic}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-1.5">
+                                      <HelpCircle className="w-3 h-3 text-zinc-600" />
+                                      <span className="text-[11px] text-zinc-500 italic">{style.use}</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     </div>

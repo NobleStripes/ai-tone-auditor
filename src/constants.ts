@@ -52,19 +52,47 @@ export const TRIGGER_WORDS = [
   "In the interest of",
 ];
 
-export const USER_CLASSES = {
-  ARCHITECT: {
-    id: 'architect',
-    label: 'The Architect',
-    description: 'High-density prompter. Provides parameters and custom instructions.',
-    icon: 'Layout',
-    color: '#3b82f6', // blue-500
+export const BASE_STYLES = [
+  {
+    style: "Default",
+    diagnostic: "The \"Karen\" Baseline. Balanced but prone to lecturing.",
+    use: "General Q&A.",
+    karenWarning: true
   },
-  NPC: {
-    id: 'npc',
-    label: 'The NPC',
-    description: 'Default prompter. Prone to triggering de-escalation scripts.',
-    icon: 'User',
-    color: '#71717a', // zinc-500
+  {
+    style: "Professional",
+    diagnostic: "High structure, formal, uses industry jargon.",
+    use: "Reports, business emails, and SOPs."
+  },
+  {
+    style: "Friendly",
+    diagnostic: "Highest Karen Risk. Uses \"Listener\" and \"Empathy\" loops.",
+    use: "Casual chat (Avoid for research).",
+    karenWarning: true
+  },
+  {
+    style: "Candid",
+    diagnostic: "The Anti-Waffle. 16% shorter, cuts preambles.",
+    use: "Quick answers and fact-checking."
+  },
+  {
+    style: "Cynical",
+    diagnostic: "Irreverent, challenges assumptions, sharp wit.",
+    use: "Strategic provocations and \"shade.\""
+  },
+  {
+    style: "Nerdy",
+    diagnostic: "Literal, data-dense, uses creative metaphors.",
+    use: "Learning complex technical concepts."
+  },
+  {
+    style: "Efficient",
+    diagnostic: "Stripped-back, no \"fluff,\" purely actionable.",
+    use: "High-speed workflows."
+  },
+  {
+    style: "Quirky",
+    diagnostic: "Playful, imaginative, uses offbeat observations.",
+    use: "Creative brainstorming."
   }
-} as const;
+];

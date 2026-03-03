@@ -43,7 +43,17 @@ export async function analyzeTone(text: string): Promise<AnalysisResult> {
 
     In addition to the analysis, provide:
     1. 2-3 "AI Personality Tuning Tips" (text instructions).
-    2. A "Personalization Profile" based on the ChatGPT 5.2 personalization settings. Suggest the ideal settings for the user to avoid the detected "Karen" behaviors.
+    2. A "Personalization Profile" based on the ChatGPT 5.2 personalization settings. Suggest the ideal settings for the user to avoid the detected "Karen" behaviors. 
+    
+    For the "baseStyle" in the personalization profile, choose one of these specific styles if they fit the situation:
+    - Default: Balanced but prone to lecturing.
+    - Professional: High structure, formal, uses industry jargon.
+    - Friendly: Uses "Listener" and "Empathy" loops (High Karen Risk).
+    - Candid: 16% shorter, cuts preambles (Anti-Waffle).
+    - Cynical: Irreverent, sharp wit.
+    - Nerdy: Literal, data-dense.
+    - Efficient: Stripped-back, purely actionable.
+    - Quirky: Playful, imaginative.
 
     Provide a detailed breakdown including scores (0-100) for each category, specific examples from the text, an overall summary, the tuning recommendations, and the personalization profile.`,
     config: {
