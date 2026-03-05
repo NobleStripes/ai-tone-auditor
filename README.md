@@ -27,13 +27,6 @@ The core intent of this tool is to:
 3. Review the "Anti-Karen Remediation Strategy" in the Personalization Profile.
 4. Copy the suggested prompt snippets to tune your AI's custom instructions.
 
-## Tech Stack
-
-- **Frontend**: React, Tailwind CSS, Framer Motion
-- **AI Engine**: Gemini 3.1 Flash
-- **Visualizations**: Recharts
-- **Icons**: Lucide React
-
 ## Run and deploy your AI Studio app
 
 This application is built as an AI Studio applet. To run it locally or deploy it, follow these steps:
@@ -69,6 +62,13 @@ AI Studio apps are designed to be deployed seamlessly within the AI Studio envir
 1. Ensure all changes are committed.
 2. Use the **Share** button in the AI Studio interface to generate a public URL.
 3. Your app will be hosted on a `.run.app` subdomain, ready for use by others.
+
+## Tech Stack
+
+- **Frontend**: React, Tailwind CSS, Framer Motion
+- **AI Engine**: Gemini 3.1 Flash
+- **Visualizations**: Recharts
+- **Icons**: Lucide React
 
 ---
 *Built to make AI interactions more human, one audit at a time.*
