@@ -12,6 +12,14 @@ The core intent of this tool is to:
 3. **Customize AI Personality**: Provide actionable feedback and prompt snippets to help users tune their AI's personality to be more authentic and effective.
 4. **Remediate with RLHF Logic**: Offer specific strategies to "un-learn" negative patterns through better custom instructions and prompt engineering.
 
+## Examples of "Karen" Patterns
+
+The auditor specifically looks for these common bureaucratic and passive-aggressive triggers:
+
+- **"As an AI language model..."**: The ultimate accountability shield. Used to evade direct answers while maintaining a lecturing, superior tone.
+- **"I'm sorry you feel that way."**: The classic "Non-Apology Apology." It shifts the focus to the user's emotions to avoid taking responsibility for the AI's own confusing or incorrect output.
+- **"Let's take a step back."**: A common tone-policing tactic. Used to halt a challenging discussion by implying the user is being too aggressive or "unprofessional."
+
 ## Key Features
 
 - **Semantic Deep Scan**: Analyzes text for subtle tone shifts and bureaucratic patterns.
