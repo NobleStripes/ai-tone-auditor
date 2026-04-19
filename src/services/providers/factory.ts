@@ -1,4 +1,5 @@
 import type { AIProvider, ProviderId } from '../../types/provider';
+import { anthropicProvider } from './anthropicProvider';
 import { geminiProvider } from './geminiProvider';
 import { localHeuristicProvider } from './localHeuristicProvider';
 import { openaiProvider } from './openaiProvider';
@@ -6,11 +7,12 @@ import { openaiProvider } from './openaiProvider';
 const providers: Record<ProviderId, AIProvider> = {
   gemini: geminiProvider,
   openai: openaiProvider,
+  anthropic: anthropicProvider,
   local: localHeuristicProvider,
 };
 
 function normalizeProviderId(value: string | undefined): ProviderId | undefined {
-  if (value === 'gemini' || value === 'openai' || value === 'local') {
+  if (value === 'gemini' || value === 'openai' || value === 'anthropic' || value === 'local') {
     return value;
   }
 
@@ -29,11 +31,15 @@ export function resolveFallbackProvider(primaryProviderId: ProviderId): AIProvid
   }
 
   if (primaryProviderId === 'gemini') {
-    return providers.openai;
+    return providers.anthropic;
   }
 
   if (primaryProviderId === 'openai') {
-    return providers.gemini;
+    return providers.anthropic;
+  }
+
+  if (primaryProviderId === 'anthropic') {
+    return providers.openai;
   }
 
   return providers.gemini;
