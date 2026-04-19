@@ -51,7 +51,7 @@ import {
   Tooltip,
   Cell
 } from 'recharts';
-import { analyzeTone, getLastAnalysisRuntimeMeta } from './services/analyzeTone';
+import { analyzeTone, getLastAnalysisRuntimeMeta, getProviderTelemetrySnapshot } from './services/analyzeTone';
 import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
 import { cn } from './lib/utils';
 import type { AnalysisResult } from './types/analysis';
@@ -370,6 +370,7 @@ export default function App() {
   const [expandedFinding, setExpandedFinding] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [runtimeMeta, setRuntimeMeta] = useState<ProviderRuntimeMeta>(getLastAnalysisRuntimeMeta());
+  const [telemetry, setTelemetry] = useState(getProviderTelemetrySnapshot());
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const handleAnalyze = async (textToAnalyze: string = inputText) => {
@@ -380,6 +381,7 @@ export default function App() {
       const { result: data, meta } = await analyzeTone(textToAnalyze);
       setResult(data);
       setRuntimeMeta(meta);
+      setTelemetry(getProviderTelemetrySnapshot());
       
       const newEntry = {
         id: Math.random().toString(36).substr(2, 9),
@@ -859,6 +861,9 @@ export default function App() {
           <span className="hidden sm:inline">PROVIDER: {runtimeMeta.providerLabel.toUpperCase()}</span>
           <span className="hidden sm:inline">MODEL: {runtimeMeta.model.toUpperCase()}</span>
           {runtimeMeta.usedFallback && <span className="text-amber-500">FALLBACK: ACTIVE</span>}
+          <span className="hidden md:inline">
+            FALLBACK_RATE: {telemetry.fallbackRatePercent}% ({telemetry.fallbackActivations}/{telemetry.totalAnalyses || 0})
+          </span>
         </div>
         <div className="text-center md:text-right">
           &copy; 2026 AI TONE AUDITOR CORE

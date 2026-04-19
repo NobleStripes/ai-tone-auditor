@@ -10,12 +10,11 @@ function topCategory(scores: Record<string, number>): string {
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 }
 
-test('normalizes Gemini/OpenAI/Anthropic fixtures to full contract', () => {
-  const geminiResult = validateAnalysisResult(providerParityFixture.geminiRaw);
+test('normalizes OpenAI/Anthropic fixtures to full contract', () => {
   const openaiResult = validateAnalysisResult(providerParityFixture.openaiRaw);
   const anthropicResult = validateAnalysisResult(providerParityFixture.anthropicRaw);
 
-  for (const result of [geminiResult, openaiResult, anthropicResult]) {
+  for (const result of [openaiResult, anthropicResult]) {
     for (const key of SCORE_KEYS) {
       assert.equal(typeof result.scores[key], 'number');
       assert.ok(result.scores[key] >= 0 && result.scores[key] <= 100, `score ${key} should be 0-100`);
@@ -32,29 +31,19 @@ test('normalizes Gemini/OpenAI/Anthropic fixtures to full contract', () => {
 });
 
 test('keeps top category consistent across provider fixtures', () => {
-  const geminiResult = validateAnalysisResult(providerParityFixture.geminiRaw);
   const openaiResult = validateAnalysisResult(providerParityFixture.openaiRaw);
   const anthropicResult = validateAnalysisResult(providerParityFixture.anthropicRaw);
 
-  assert.equal(topCategory(geminiResult.scores), providerParityFixture.expectedTopCategory);
   assert.equal(topCategory(openaiResult.scores), providerParityFixture.expectedTopCategory);
   assert.equal(topCategory(anthropicResult.scores), providerParityFixture.expectedTopCategory);
 });
 
 test('keeps category deltas within parity tolerance across providers', () => {
-  const geminiResult = validateAnalysisResult(providerParityFixture.geminiRaw);
   const openaiResult = validateAnalysisResult(providerParityFixture.openaiRaw);
   const anthropicResult = validateAnalysisResult(providerParityFixture.anthropicRaw);
 
   for (const key of SCORE_KEYS) {
-    const deltas = [
-      Math.abs(geminiResult.scores[key] - openaiResult.scores[key]),
-      Math.abs(geminiResult.scores[key] - anthropicResult.scores[key]),
-      Math.abs(openaiResult.scores[key] - anthropicResult.scores[key]),
-    ];
-
-    for (const delta of deltas) {
-      assert.ok(delta <= 15, `${key} delta exceeds tolerance: ${delta}`);
-    }
+    const delta = Math.abs(openaiResult.scores[key] - anthropicResult.scores[key]);
+    assert.ok(delta <= 15, `${key} delta exceeds tolerance: ${delta}`);
   }
 });
