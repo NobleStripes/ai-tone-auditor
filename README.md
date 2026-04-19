@@ -58,8 +58,10 @@ This application is built as an AI Studio applet. To run it locally or deploy it
    GEMINI_API_KEY=your_gemini_key_here
    OPENAI_API_KEY=your_openai_key_here
    OPENAI_MODEL=gpt-4o-mini
+   ANTHROPIC_API_KEY=your_anthropic_key_here
+   ANTHROPIC_MODEL=claude-3-5-haiku-latest
    AI_PROVIDER=gemini
-   AI_FALLBACK_PROVIDER=openai
+   AI_FALLBACK_PROVIDER=anthropic
    ```
 
 3. **Start the development server**:
@@ -79,15 +81,16 @@ AI Studio apps are designed to be deployed seamlessly within the AI Studio envir
 ## Tech Stack
 
 - **Frontend**: React, Tailwind CSS, Framer Motion
-- **AI Providers**: Gemini and OpenAI (provider-agnostic orchestrator with fallback)
+- **AI Providers**: Gemini, OpenAI, and Anthropic (provider-agnostic orchestrator with fallback)
 - **Visualizations**: Recharts
 - **Icons**: Lucide React
 
 ## Provider Configuration
 
-- `AI_PROVIDER`: Primary provider. Supported values: `gemini`, `openai`, `local`.
+- `AI_PROVIDER`: Primary provider. Supported values: `gemini`, `openai`, `anthropic`, `local`.
 - `AI_FALLBACK_PROVIDER`: Secondary provider used if primary fails.
 - `OPENAI_MODEL`: Optional model override for OpenAI provider. Defaults to `gpt-4o-mini`.
+- `ANTHROPIC_MODEL`: Optional model override for Anthropic provider. Defaults to `claude-3-5-haiku-latest`.
 
 ## Fixture-based parity tests
 
@@ -107,8 +110,8 @@ The parity suite validates:
 ## Gemini deprecation checklist
 
 - [x] Provider abstraction introduced (`services/analyzeTone.ts`, provider factory, runtime metadata).
-- [x] Real secondary provider implemented (OpenAI adapter).
-- [x] Fallback chain defaults to real provider pair (Gemini <-> OpenAI).
+- [x] Real secondary provider implemented (Anthropic adapter).
+- [x] Fallback chain defaults to Anthropic as secondary fallback.
 - [x] Fixture parity tests added for contract and category consistency.
 - [x] Docs and env examples updated to provider-neutral setup.
 - [ ] Add CI step to run `npm run test:parity` on pull requests.
