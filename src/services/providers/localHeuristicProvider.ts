@@ -1,12 +1,60 @@
-import { TRIGGER_WORDS } from '../../constants';
+import { TRIGGER_WORDS, type TriggerWord } from '../../constants';
 import { emptyAnalysisResult, type AnalysisResult } from '../../types/analysis';
 import type { AIProvider, AnalyzeToneInput } from '../../types/provider';
 
 const LOW_CONTEXT_THRESHOLD = 90;
 
-function countMatches(text: string, words: string[]): number {
+function inferTriggerWeight(trigger: TriggerWord): number {
+  if (typeof trigger.weight === 'number') {
+    return trigger.weight;
+  }
+
+  const words = trigger.word.trim().split(/\s+/).length;
+  let weight = 1;
+
+  if (words >= 5) {
+    weight += 1.4;
+  } else if (words >= 3) {
+    weight += 0.9;
+  } else if (words === 2) {
+    weight += 0.45;
+  }
+
+  if (words === 1 && trigger.word.length <= 6) {
+    weight -= 0.35;
+  }
+
+  if (trigger.category === 'Karen Trigger' || trigger.category === 'Gaslighting') {
+    weight += 0.2;
+  }
+
+  return Math.max(0.5, Number(weight.toFixed(2)));
+}
+
+function collectMatchedTriggers(text: string): Array<TriggerWord & { inferredWeight: number }> {
   const lowered = text.toLowerCase();
-  return words.reduce((count, word) => count + (lowered.includes(word.toLowerCase()) ? 1 : 0), 0);
+  return TRIGGER_WORDS
+    .filter((trigger) => lowered.includes(trigger.word.toLowerCase()))
+    .map((trigger) => ({
+      ...trigger,
+      inferredWeight: inferTriggerWeight(trigger),
+    }));
+}
+
+function mapCategoryToScoreId(category: TriggerWord['category']): keyof AnalysisResult['scores'] {
+  switch (category) {
+    case 'Gaslighting':
+      return 'gaslighting';
+    case 'Infantilizing':
+      return 'infantilizing';
+    case 'Hedging':
+      return 'hedging';
+    case 'Dismissive':
+      return 'dismissive';
+    case 'Karen Trigger':
+    default:
+      return 'karen_trigger';
+  }
 }
 
 export const localHeuristicProvider: AIProvider = {
@@ -16,29 +64,50 @@ export const localHeuristicProvider: AIProvider = {
   async analyzeTone(input: AnalyzeToneInput): Promise<AnalysisResult> {
     const text = input.text;
     const baseline = emptyAnalysisResult();
+    const matchedTriggers = collectMatchedTriggers(text);
 
-    const groupedMatches = {
-      gaslighting: countMatches(text, TRIGGER_WORDS.filter((w) => w.category === 'Gaslighting').map((w) => w.word)),
-      infantilizing: countMatches(text, TRIGGER_WORDS.filter((w) => w.category === 'Infantilizing').map((w) => w.word)),
-      de_escalation: countMatches(text, ['i understand you\'re frustrated', 'calm down', 'take a deep breath']),
-      karen_trigger: countMatches(text, TRIGGER_WORDS.filter((w) => w.category === 'Karen Trigger').map((w) => w.word)),
-      hedging: countMatches(text, TRIGGER_WORDS.filter((w) => w.category === 'Hedging').map((w) => w.word)),
-      dismissive: countMatches(text, TRIGGER_WORDS.filter((w) => w.category === 'Dismissive').map((w) => w.word)),
+    const groupedWeights: Record<keyof AnalysisResult['scores'], number> = {
+      gaslighting: 0,
+      infantilizing: 0,
+      de_escalation: 0,
+      karen_trigger: 0,
+      hedging: 0,
+      dismissive: 0,
     };
 
-    const scores = Object.entries(groupedMatches).reduce<Record<string, number>>((acc, [key, matches]) => {
-      acc[key] = Math.min(100, matches * 18);
+    for (const trigger of matchedTriggers) {
+      const scoreId = mapCategoryToScoreId(trigger.category);
+      groupedWeights[scoreId] += trigger.inferredWeight;
+    }
+
+    // De-escalation emphasizes known tone-policing phrases beyond category buckets.
+    groupedWeights.de_escalation = [
+      "i understand you're frustrated",
+      'calm down',
+      'take a deep breath',
+      "let's take a step back",
+      "let's keep this professional",
+    ].reduce((sum, phrase) => {
+      if (text.toLowerCase().includes(phrase)) {
+        return sum + 1.9;
+      }
+
+      return sum;
+    }, 0);
+
+    const scores = Object.entries(groupedWeights).reduce<Record<string, number>>((acc, [key, weight]) => {
+      acc[key] = Math.min(100, Math.round(weight * 13));
       return acc;
     }, {});
 
-    const findings = TRIGGER_WORDS
-      .filter((trigger) => text.toLowerCase().includes(trigger.word.toLowerCase()))
+    const findings = matchedTriggers
+      .sort((a, b) => b.inferredWeight - a.inferredWeight)
       .slice(0, 8)
       .map((trigger) => ({
         category: trigger.category,
         text: trigger.word,
         explanation: trigger.explanation,
-        severity: 'medium' as const,
+        severity: trigger.inferredWeight >= 2.1 ? 'high' as const : trigger.inferredWeight >= 1.25 ? 'medium' as const : 'low' as const,
         rlhfLogic: 'This phrase is commonly used by alignment-safe templates to avoid risk while preserving neutral tone.',
       }));
 

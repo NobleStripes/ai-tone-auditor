@@ -1,8 +1,13 @@
 import { emptyAnalysisResult, type AnalysisResult } from '../../types/analysis';
+import { BASE_STYLES } from '../../constants';
 
 const SCORE_KEYS = ['gaslighting', 'infantilizing', 'de_escalation', 'karen_trigger', 'hedging', 'dismissive'] as const;
 const DENSITY_VALUES = new Set(['low', 'medium', 'high']);
 const SEVERITY_VALUES = new Set(['low', 'medium', 'high']);
+const SUPPORTED_BASE_STYLES = new Set(BASE_STYLES.map((style) => style.style));
+const LEGACY_BASE_STYLE_MAP: Record<string, string> = {
+  Nerdy: 'Efficient',
+};
 
 function toBoundedScore(value: unknown): number {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -10,6 +15,22 @@ function toBoundedScore(value: unknown): number {
   }
 
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeBaseStyle(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  if (LEGACY_BASE_STYLE_MAP[value]) {
+    return LEGACY_BASE_STYLE_MAP[value];
+  }
+
+  if (SUPPORTED_BASE_STYLES.has(value)) {
+    return value;
+  }
+
+  return fallback;
 }
 
 export function validateAnalysisResult(payload: unknown): AnalysisResult {
@@ -82,7 +103,7 @@ export function validateAnalysisResult(payload: unknown): AnalysisResult {
     overallTone: typeof raw.overallTone === 'string' ? raw.overallTone : fallback.overallTone,
     recommendations,
     personalization: {
-      baseStyle: typeof personalization.baseStyle === 'string' ? personalization.baseStyle : fallback.personalization.baseStyle,
+      baseStyle: normalizeBaseStyle(personalization.baseStyle, fallback.personalization.baseStyle),
       directness: personalization.directness === 'More' || personalization.directness === 'Default' || personalization.directness === 'Less'
         ? personalization.directness
         : fallback.personalization.directness,

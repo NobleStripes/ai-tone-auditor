@@ -37,7 +37,14 @@ export const TONE_CATEGORIES = {
   }
 } as const;
 
-export const TRIGGER_WORDS = [
+export type TriggerWord = {
+  word: string;
+  explanation: string;
+  category: 'Karen Trigger' | 'Gaslighting' | 'Infantilizing' | 'Hedging' | 'Dismissive';
+  weight?: number;
+};
+
+export const TRIGGER_WORDS: TriggerWord[] = [
   {
     word: "As an AI language model",
     explanation: "The ultimate 'Karen' shield. Used to evade accountability by hiding behind a non-human identity while lecturing the user.",
