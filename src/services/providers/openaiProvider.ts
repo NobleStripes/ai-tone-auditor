@@ -95,6 +95,9 @@ export const openaiProvider: AIProvider = {
     }
 
     const payload = (await response.json()) as OpenAIChatResponse;
+    if (!payload.choices || payload.choices.length === 0) {
+      throw new Error('OpenAI response returned no choices');
+    }
     const content = readMessageContent(payload);
 
     try {

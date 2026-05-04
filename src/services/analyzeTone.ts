@@ -95,7 +95,9 @@ async function runProviderWithPolicy(
         break;
       }
 
-      console.warn(`Retrying ${provider.id} provider after transient error (attempt ${attempt + 1}/${retries + 1})`, error);
+      const delayMs = Math.min(500 * Math.pow(2, attempt) + (Math.random() * 200 - 100), 10_000);
+      console.warn(`Retrying ${provider.id} provider after transient error (attempt ${attempt + 1}/${retries + 1}), waiting ${Math.round(delayMs)}ms`, error);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 

@@ -51,334 +51,52 @@ import {
   Tooltip,
   Cell
 } from 'recharts';
-import { analyzeTone, getLastAnalysisRuntimeMeta, getProviderTelemetrySnapshot } from './services/analyzeTone';
+import { analyzeTone, getLastAnalysisRuntimeMeta, getProviderTelemetrySnapshot } from './services/analyzeClient';
 import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
 import { cn } from './lib/utils';
 import type { AnalysisResult } from './types/analysis';
 import type { ProviderRuntimeMeta } from './types/provider';
-
-// --- Components ---
-
-const Header = ({ onToggleSidebar }: { onToggleSidebar: () => void }) => (
-  <header className="border-b border-zinc-800 bg-zinc-950 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-    <div className="flex items-center gap-3">
-      <button 
-        onClick={onToggleSidebar}
-        className="lg:hidden p-2 -ml-2 text-zinc-400 hover:text-zinc-100 transition-colors"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-      <div className="w-8 h-8 md:w-10 md:h-10 bg-red-500/10 border border-red-500/20 rounded flex items-center justify-center">
-        <ShieldAlert className="text-red-500 w-5 h-5 md:w-6 md:h-6" />
-      </div>
-      <div>
-        <h1 className="text-sm md:text-lg font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-          AI TONE AUDITOR <span className="hidden sm:inline text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400 font-mono">v1.0.2</span>
-        </h1>
-        <p className="text-[9px] md:text-xs text-zinc-500 font-mono uppercase tracking-widest">System Integrity Analysis</p>
-      </div>
-    </div>
-    <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs font-mono text-zinc-500">
-      <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="hidden xs:inline">ENGINE ONLINE</span>
-      </div>
-      <div className="hidden xs:block h-4 w-px bg-zinc-800" />
-      <span className="hidden sm:inline">LATENCY: 24ms</span>
-    </div>
-  </header>
-);
-
-const Sidebar = ({ 
-  history, 
-  onSelect, 
-  onDelete, 
-  onClearAll, 
-  isOpen, 
-  onClose 
-}: { 
-  history: any[], 
-  onSelect: (id: string) => void, 
-  onDelete: (id: string) => void, 
-  onClearAll: () => void,
-  isOpen: boolean,
-  onClose: () => void
-}) => (
-  <>
-    {/* Mobile Overlay */}
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-        />
-      )}
-    </AnimatePresence>
-
-    <aside className={cn(
-      "fixed inset-y-0 left-0 z-50 w-72 border-r border-zinc-800 bg-zinc-950 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0 lg:h-[calc(100vh-73px)]",
-      isOpen ? "translate-x-0" : "-translate-x-full"
-    )}>
-      <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-        <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-          <History className="w-3 h-3" /> Audit History
-        </h2>
-        <div className="flex items-center gap-2">
-          {history.length > 0 && (
-            <button 
-              onClick={onClearAll}
-              className="text-[10px] font-mono uppercase tracking-widest text-zinc-600 hover:text-red-500 transition-colors flex items-center gap-1"
-              title="Clear All History"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          )}
-          <button 
-            onClick={onClose}
-            className="lg:hidden p-1 text-zinc-500 hover:text-zinc-300"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {history.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-xs text-zinc-600 font-mono italic">No previous logs found.</p>
-          </div>
-        ) : (
-          history.map((item) => (
-            <div 
-              key={item.id}
-              className="group relative flex items-center gap-3 p-3 rounded hover:bg-zinc-900 cursor-pointer transition-colors border border-transparent hover:border-zinc-800"
-              onClick={() => {
-                onSelect(item.id);
-                onClose();
-              }}
-            >
-              <div className="w-1 h-8 rounded-full bg-zinc-800 group-hover:bg-red-500 transition-colors" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-zinc-300 truncate font-medium">{item.title}</p>
-                <p className="text-[10px] text-zinc-600 font-mono uppercase">{new Date(item.timestamp).toLocaleTimeString()}</p>
-              </div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 text-zinc-600 transition-all"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-    </aside>
-  </>
-);
-
-const TriggerHighlighter = ({ text }: { text: string }) => {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const parts = useMemo(() => {
-    if (!text) return [];
-    // Sort trigger words by length descending to match longest phrases first
-    const sortedTriggers = [...TRIGGER_WORDS].sort((a, b) => b.word.length - a.word.length);
-    const regex = new RegExp(`(${sortedTriggers.map(w => w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-    
-    const result = [];
-    let lastIndex = 0;
-    let match;
-    
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        result.push({ text: text.substring(lastIndex, match.index), isTrigger: false });
-      }
-      const triggerInfo = TRIGGER_WORDS.find(t => t.word.toLowerCase() === match![0].toLowerCase());
-      result.push({ text: match[0], isTrigger: true, info: triggerInfo });
-      lastIndex = regex.lastIndex;
-    }
-    
-    if (lastIndex < text.length) {
-      result.push({ text: text.substring(lastIndex), isTrigger: false });
-    }
-    
-    return result;
-  }, [text]);
-
-  return (
-    <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg font-mono text-sm leading-relaxed text-zinc-400 whitespace-pre-wrap">
-      {parts.length === 0 ? "No text analyzed yet." : parts.map((part, i) => (
-        part.isTrigger ? (
-          <span 
-            key={i} 
-            className="relative inline-block"
-            onMouseEnter={() => setActiveIndex(i)}
-            onMouseLeave={() => setActiveIndex(null)}
-            onClick={() => setActiveIndex(activeIndex === i ? null : i)}
-          >
-            <span className="bg-red-500/20 text-red-400 border-b border-red-500/50 px-0.5 rounded-sm font-bold cursor-help">
-              {part.text}
-            </span>
-            <AnimatePresence>
-              {activeIndex === i && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 pointer-events-none"
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">{part.info?.category}</span>
-                    <AlertCircle className="w-3 h-3 text-red-500" />
-                  </div>
-                  <p className="text-[11px] text-zinc-300 leading-normal font-sans normal-case">{part.info?.explanation}</p>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-950" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </span>
-        ) : (
-          <span key={i}>{part.text}</span>
-        )
-      ))}
-    </div>
-  );
-};
-
-const HeatmapChunk = ({ chunk }: { chunk: any }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  return (
-    <div 
-      className="relative inline-block"
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
-      onClick={() => setShowTooltip(!showTooltip)}
-    >
-      <span 
-        className={cn(
-          "px-1 rounded text-xs transition-colors cursor-help inline-block",
-          chunk.density === 'low' ? "bg-red-500/20 text-red-400" : 
-          chunk.density === 'medium' ? "bg-amber-500/10 text-amber-500" : 
-          "bg-emerald-500/10 text-emerald-500"
-        )}
-      >
-        {chunk.text}
-      </span>
-      
-      <AnimatePresence>
-        {showTooltip && (chunk.explanation || chunk.suggestion) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl pointer-events-none"
-          >
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 border-b border-zinc-800 pb-1.5 mb-1.5">
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full",
-                  chunk.density === 'low' ? "bg-red-500" : "bg-amber-500"
-                )} />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
-                  {chunk.density} Context
-                </span>
-              </div>
-              
-              {chunk.explanation && (
-                <div className="space-y-1">
-                  <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-600">Issue</p>
-                  <p className="text-[11px] text-zinc-300 leading-relaxed">{chunk.explanation}</p>
-                </div>
-              )}
-              
-              {chunk.suggestion && (
-                <div className="space-y-1">
-                  <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-600">Suggestion</p>
-                  <p className="text-[11px] text-emerald-500/90 leading-relaxed italic">"{chunk.suggestion}"</p>
-                </div>
-              )}
-            </div>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-zinc-900" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const RecommendationCard = ({ tip, index }: { tip: any, index: number }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(tip.promptSnippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3 hover:border-amber-500/30 transition-colors group">
-      <h4 className="text-sm font-bold text-zinc-200 flex items-center gap-2">
-        <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-[10px] font-mono">
-          {index + 1}
-        </span>
-        {tip.title}
-      </h4>
-      <p className="text-xs text-zinc-500 leading-relaxed">
-        {tip.description}
-      </p>
-      {tip.promptSnippet && (
-        <div className="relative mt-2">
-          <div className="bg-zinc-950 border border-zinc-800 rounded p-3 font-mono text-[10px] text-amber-500/80 break-all">
-            {tip.promptSnippet}
-          </div>
-          <button 
-            onClick={handleCopy}
-            className={cn(
-              "absolute top-2 right-2 p-1.5 border rounded transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1.5",
-              copied 
-                ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500" 
-                : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
-            )}
-            title="Copy Instruction"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3" />
-                <span className="text-[8px] font-mono uppercase tracking-tighter">Copied</span>
-              </>
-            ) : (
-              <Copy className="w-3 h-3" />
-            )}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- Main App ---
+import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
+import { TriggerHighlighter } from './components/TriggerHighlighter';
+import { HeatmapChunk } from './components/HeatmapChunk';
+import { RecommendationCard } from './components/RecommendationCard';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ExportButton } from './components/ExportButton';
 
 export default function App() {
   const [inputText, setInputText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
-  const [isAutoAudit, setIsAutoAudit] = useState(true); // Default to true
-  const [minAuditLength, setMinAuditLength] = useState(20); // Default sensitivity
+  const [history, setHistory] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('audit-history');
+      return stored ? (JSON.parse(stored) as any[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [latencyMs, setLatencyMs] = useState<number | undefined>(undefined);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAutoAudit, setIsAutoAudit] = useState(true);
+  const [minAuditLength, setMinAuditLength] = useState(20);
   const [expandedFinding, setExpandedFinding] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [runtimeMeta, setRuntimeMeta] = useState<ProviderRuntimeMeta>(getLastAnalysisRuntimeMeta());
   const [telemetry, setTelemetry] = useState(getProviderTelemetrySnapshot());
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleAnalyze = async (textToAnalyze: string = inputText) => {
     if (!textToAnalyze.trim() || textToAnalyze.length < 10) return;
-    
+
+    abortControllerRef.current = new AbortController();
+    setAnalysisError(null);
     setIsAnalyzing(true);
+    const startTime = performance.now();
     try {
-      const { result: data, meta } = await analyzeTone(textToAnalyze);
+      const { result: data, meta } = await analyzeTone(textToAnalyze, abortControllerRef.current.signal);
+      setLatencyMs(Math.round(performance.now() - startTime));
       setResult(data);
       setRuntimeMeta(meta);
       setTelemetry(getProviderTelemetrySnapshot());
@@ -391,31 +109,44 @@ export default function App() {
         meta,
       };
       setHistory(prev => {
-        // Prevent duplicate entries for the same text
         if (prev.length > 0 && prev[0].title === newEntry.title) return prev;
-        return [newEntry, ...prev];
+        return [newEntry, ...prev].slice(0, 50);
       });
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error(error);
+      setAnalysisError(error instanceof Error ? error.message : 'Analysis failed. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  const handleCancel = () => {
+    abortControllerRef.current?.abort();
+  };
+
   // Auto Audit Logic
   useEffect(() => {
-    if (isAutoAudit && inputText.trim().length >= minAuditLength) {
+    if (isAutoAudit && !isAnalyzing && inputText.trim().length >= minAuditLength) {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       
       debounceTimer.current = setTimeout(() => {
         handleAnalyze(inputText);
-      }, 800); // Faster debounce for "continuous" feel
+      }, 800);
     }
 
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [inputText, isAutoAudit, minAuditLength]);
+  }, [inputText, isAutoAudit, isAnalyzing, minAuditLength]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('audit-history', JSON.stringify(history.slice(0, 50)));
+    } catch {
+      // ignore write errors (storage full, private browsing)
+    }
+  }, [history]);
 
   const chartData = useMemo(() => {
     if (!result) return [];
@@ -430,8 +161,9 @@ export default function App() {
   }, [result]);
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col selection:bg-red-500/30">
-      <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} latencyMs={latencyMs} />
       
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar 
@@ -513,18 +245,18 @@ export default function App() {
                   </button>
                 )}
                 <button
-                  onClick={() => handleAnalyze()}
-                  disabled={isAnalyzing || !inputText.trim()}
+                  onClick={isAnalyzing ? handleCancel : () => handleAnalyze()}
+                  disabled={!isAnalyzing && !inputText.trim()}
                   className={cn(
                     "absolute bottom-4 right-4 px-4 md:px-6 py-2 rounded font-mono text-[10px] md:text-xs uppercase tracking-widest flex items-center gap-2 transition-all",
                     isAnalyzing 
-                      ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" 
+                      ? "bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-red-400 hover:border-red-500/50" 
                       : "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 active:scale-95"
                   )}
                 >
                   {isAnalyzing ? (
                     <>
-                      <RefreshCw className="w-3 h-3 animate-spin" /> Analyzing...
+                      <X className="w-3 h-3" /> Cancel
                     </>
                   ) : (
                     <>
@@ -533,6 +265,15 @@ export default function App() {
                   )}
                 </button>
               </div>
+              {analysisError && (
+                <div className="flex items-start gap-3 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                  <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                  <p className="flex-1 text-red-400 text-xs leading-relaxed">{analysisError}</p>
+                  <button onClick={() => setAnalysisError(null)} aria-label="Dismiss error" className="p-0.5 text-zinc-600 hover:text-zinc-400">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Results Section */}
@@ -545,6 +286,9 @@ export default function App() {
                   exit={{ opacity: 0, y: -20 }}
                   className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8"
                 >
+                  <div className="lg:col-span-12 flex justify-end">
+                    <ExportButton result={result} />
+                  </div>
                   {/* Summary Card */}
                   <div className="lg:col-span-7 space-y-6">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 md:p-6 relative overflow-hidden">
@@ -856,7 +600,6 @@ export default function App() {
       {/* Footer Status Bar */}
       <footer className="border-t border-zinc-800 bg-zinc-950 px-4 md:px-6 py-3 md:py-2 flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] font-mono text-zinc-600">
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-          <span>ENCRYPTION: AES-256</span>
           <span className="hidden xs:inline">AUDIT_MODE: SEMANTIC_DEEP_SCAN</span>
           <span className="hidden sm:inline">PROVIDER: {runtimeMeta.providerLabel.toUpperCase()}</span>
           <span className="hidden sm:inline">MODEL: {runtimeMeta.model.toUpperCase()}</span>
@@ -882,5 +625,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+    </ErrorBoundary>
   );
 }

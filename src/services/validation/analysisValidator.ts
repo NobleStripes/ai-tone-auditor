@@ -54,6 +54,7 @@ export function validateAnalysisResult(payload: unknown): AnalysisResult {
           severity: SEVERITY_VALUES.has(String(item.severity)) ? (item.severity as AnalysisResult['findings'][number]['severity']) : 'low',
           rlhfLogic: typeof item.rlhfLogic === 'string' ? item.rlhfLogic : undefined,
         }))
+        .filter((item) => item.text.trim().length > 0)
     : [];
 
   const recommendations = Array.isArray(raw.recommendations)

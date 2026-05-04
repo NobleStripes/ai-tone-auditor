@@ -3,6 +3,7 @@ import { emptyAnalysisResult, type AnalysisResult } from '../../types/analysis';
 import type { AIProvider, AnalyzeToneInput } from '../../types/provider';
 
 const LOW_CONTEXT_THRESHOLD = 90;
+const SCORE_SCALE_FACTOR = 13;
 
 function inferTriggerWeight(trigger: TriggerWord): number {
   if (typeof trigger.weight === 'number') {
@@ -96,7 +97,7 @@ export const localHeuristicProvider: AIProvider = {
     }, 0);
 
     const scores = Object.entries(groupedWeights).reduce<Record<string, number>>((acc, [key, weight]) => {
-      acc[key] = Math.min(100, Math.round(weight * 13));
+      acc[key] = Math.min(100, Math.round(weight * SCORE_SCALE_FACTOR));
       return acc;
     }, {});
 

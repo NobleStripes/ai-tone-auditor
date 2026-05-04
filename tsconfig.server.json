@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "noEmit": true
+  },
+  "include": ["server/**/*", "src/services/**/*", "src/types/**/*", "src/constants.ts"],
+  "exclude": ["src/App.tsx", "src/main.tsx", "src/components/**/*"]
+}

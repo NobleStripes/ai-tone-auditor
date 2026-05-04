@@ -74,6 +74,9 @@ export const anthropicProvider: AIProvider = {
     }
 
     const payload = (await response.json()) as AnthropicResponse;
+    if (!payload.content || payload.content.length === 0) {
+      throw new Error('Anthropic response returned no content');
+    }
     const text = payload.content
       ?.filter((item) => item.type === 'text' && typeof item.text === 'string')
       .map((item) => item.text)
