@@ -4,53 +4,23 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { 
-  ShieldAlert, 
-  Search, 
-  History, 
-  AlertTriangle, 
-  Info, 
-  ChevronRight, 
-  Terminal, 
+import {
+  Search,
+  AlertTriangle,
+  Info,
+  Terminal,
   Activity,
   Zap,
   Trash2,
-  RefreshCw,
-  CheckCircle2,
   XCircle,
   Cpu,
   Lightbulb,
-  Copy,
-  Check,
-  Settings2,
-  Smile,
-  Flame,
-  LayoutList,
-  Sticker,
-  AlertCircle,
   BookOpen,
-  Layers,
-  ChevronDown,
-  ChevronUp,
   Map,
-  Menu,
-  X
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Radar, 
-  RadarChart, 
-  PolarGrid, 
-  PolarAngleAxis, 
-  PolarRadiusAxis, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell
-} from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { analyzeTone, getLastAnalysisRuntimeMeta, getProviderTelemetrySnapshot } from './services/analyzeClient';
 import { TONE_CATEGORIES, TRIGGER_WORDS } from './constants';
 import { cn } from './lib/utils';
@@ -63,6 +33,8 @@ import { HeatmapChunk } from './components/HeatmapChunk';
 import { RecommendationCard } from './components/RecommendationCard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExportButton } from './components/ExportButton';
+import { FindingCard } from './components/FindingCard';
+import { PersonalizationProfile } from './components/PersonalizationProfile';
 
 export default function App() {
   const [inputText, setInputText] = useState('');
@@ -80,7 +52,6 @@ export default function App() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAutoAudit, setIsAutoAudit] = useState(true);
   const [minAuditLength, setMinAuditLength] = useState(20);
-  const [expandedFinding, setExpandedFinding] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [runtimeMeta, setRuntimeMeta] = useState<ProviderRuntimeMeta>(getLastAnalysisRuntimeMeta());
   const [telemetry, setTelemetry] = useState(getProviderTelemetrySnapshot());
@@ -312,67 +283,7 @@ export default function App() {
                       </h2>
                       <div className="space-y-3">
                         {result.findings.map((finding, i) => (
-                          <div key={i} className="bg-zinc-900/40 border border-zinc-800/50 rounded-lg overflow-hidden transition-all hover:border-zinc-700/50">
-                            <div className="p-4 flex gap-4 items-start">
-                              <div className={cn(
-                                "mt-1 p-1.5 rounded",
-                                finding.severity === 'high' ? "bg-red-500/10 text-red-500" :
-                                finding.severity === 'medium' ? "bg-amber-500/10 text-amber-500" :
-                                "bg-blue-500/10 text-blue-500"
-                              )}>
-                                <AlertTriangle className="w-4 h-4" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                                    {finding.category}
-                                  </span>
-                                  <span className={cn(
-                                    "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded",
-                                    finding.severity === 'high' ? "bg-red-500/20 text-red-400" :
-                                    finding.severity === 'medium' ? "bg-amber-500/20 text-amber-400" :
-                                    "bg-blue-500/20 text-blue-400"
-                                  )}>
-                                    {finding.severity} SEVERITY
-                                  </span>
-                                </div>
-                                <p className="text-sm text-zinc-400 mb-2 italic">"{finding.text}"</p>
-                                <p className="text-xs text-zinc-500 leading-relaxed mb-3">{finding.explanation}</p>
-                                
-                                <button 
-                                  onClick={() => setExpandedFinding(expandedFinding === i ? null : i)}
-                                  className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors"
-                                >
-                                  <Layers className="w-3 h-3" />
-                                  {expandedFinding === i ? 'Hide Deconstruction' : 'Deconstruct RLHF Logic'}
-                                  {expandedFinding === i ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                </button>
-                              </div>
-                            </div>
-                            
-                            <AnimatePresence>
-                              {expandedFinding === i && (
-                                <motion.div 
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="bg-emerald-500/5 border-t border-zinc-800/50 p-4"
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <div className="mt-1 p-1 bg-emerald-500/10 rounded">
-                                      <Zap className="w-3 h-3 text-emerald-500" />
-                                    </div>
-                                    <div className="space-y-2">
-                                      <h4 className="text-[10px] font-mono uppercase tracking-widest text-emerald-500">RLHF Alignment Logic (The "Nanny" Source)</h4>
-                                      <p className="text-xs text-zinc-400 leading-relaxed">
-                                        {finding.rlhfLogic || "Analyzing safety-alignment weights for this specific pattern..."}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
+                          <FindingCard key={i} finding={finding} index={i} />
                         ))}
                       </div>
                     </div>
@@ -390,71 +301,7 @@ export default function App() {
                     </div>
 
                     {/* Personalization Profile Section */}
-                    <div className="space-y-4">
-                      <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                        <Settings2 className="w-3 h-3 text-blue-500" /> Personalization Profile
-                      </h2>
-                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 md:p-6 space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-800 pb-4 gap-2">
-                          <div>
-                            <h4 className="text-sm font-bold text-zinc-200">Base style and tone</h4>
-                            <p className="text-[10px] text-zinc-500">Set the style and tone of how the AI responds to you.</p>
-                          </div>
-                          <div className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded text-xs font-mono text-blue-400 w-fit">
-                            {result.personalization.baseStyle}
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">Universal Custom Instructions</h4>
-                          
-                          <div className="space-y-3">
-                            {result.personalization.customInstructions.map((instruction, idx) => (
-                              <div key={idx} className="flex items-start gap-3 bg-zinc-950/50 border border-zinc-800 p-3 rounded-lg group hover:border-blue-500/30 transition-colors">
-                                <div className="mt-1 p-1 bg-blue-500/10 rounded">
-                                  <CheckCircle2 className="w-3 h-3 text-blue-500" />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-xs text-zinc-300 leading-relaxed">{instruction}</p>
-                                </div>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(instruction);
-                                    // Optional: add toast notification here
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 p-1 hover:text-blue-400 text-zinc-600 transition-all"
-                                  title="Copy Instruction"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Karen Remediation Strategy */}
-                        <div className="pt-4 border-t border-zinc-800">
-                          <div className="flex items-start gap-3 bg-red-500/5 border border-red-500/10 p-4 rounded-lg">
-                            <div className="mt-1 p-1.5 bg-red-500/10 rounded">
-                              <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
-                            </div>
-                            <div className="space-y-2 flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-[10px] font-mono uppercase tracking-widest text-red-500">Anti-Karen Remediation Strategy</h4>
-                                <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-widest">Active Counter-Measure</span>
-                              </div>
-                              <p className="text-xs text-zinc-300 leading-relaxed">
-                                {result.personalization.karenRemediation}
-                              </p>
-                              <div className="flex items-center gap-2 pt-1">
-                                <div className="h-px flex-1 bg-zinc-800" />
-                                <span className="text-[9px] text-zinc-600 font-mono italic">Apply to Custom Instructions</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <PersonalizationProfile personalization={result.personalization} />
 
                     {/* Contextual Heatmap Section */}
                     <div className="space-y-4">
